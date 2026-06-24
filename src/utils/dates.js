@@ -46,3 +46,21 @@ export function getTodayIndex() {
   const day = today.getDay();
   return day === 0 ? -1 : day - 1;
 }
+
+// Aliassen voor componenten
+export const DAY_LABELS_SHORT = DAYS;
+
+export function formatWeekLabel(monday) {
+  const endOfWeek = new Date(monday);
+  endOfWeek.setDate(endOfWeek.getDate() + 4);
+
+  const startDay = monday.getDate();
+  const endDay = endOfWeek.getDate();
+  const startMonth = MONTHS_SHORT[monday.getMonth()];
+  const endMonth = MONTHS_SHORT[endOfWeek.getMonth()];
+
+  if (startMonth === endMonth) {
+    return `${startDay} - ${endDay} ${endMonth}`;
+  }
+  return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+}
