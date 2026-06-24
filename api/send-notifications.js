@@ -6,6 +6,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+webpush.setVapidDetails(
+  'mailto:' + (process.env.VAPID_EMAIL || 'admin@teamsync.app'),
+  process.env.VITE_VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
+export default async function handler(req, res) {
+  // Beveilig met een secret
+  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
+  if (cronSecret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
 // VAPID configuratie
 webpush.setVapidDetails(
   'mailto:' + (process.env.VAPID_EMAIL || 'admin@teamsync.app'),
