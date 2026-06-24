@@ -1,271 +1,267 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { getMonday } from '../utils/dates.js';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
-const AppContext = createContext(null);
+const AppContext = createContext();
 
-const DEFAULT_MEMBERS = [
-  { id: 1, name: 'Sander Visser', short: 'Sander', role: 'admin', active: true },
-  { id: 2, name: 'Thomas Bakker', short: 'Thomas', role: 'lid', active: true },
-  { id: 3, name: 'Daan de Vries', short: 'Daan', role: 'lid', active: true },
-  { id: 4, name: 'Luuk Jansen', short: 'Luuk', role: 'lid', active: true },
-  { id: 5, name: 'Bram Mulder', short: 'Bram', role: 'lid', active: true },
-  { id: 6, name: 'Jesse de Boer', short: 'Jesse', role: 'lid', active: true },
-  { id: 7, name: 'Ruben Smit', short: 'Ruben', role: 'lid', active: true },
-  { id: 8, name: 'Stijn Peters', short: 'Stijn', role: 'lid', active: true },
-];
-
-const DEFAULT_GROUPS = [
-  { id: 1, name: 'Hockey fietsen', type: 'samen', emoji: '🚴', joinMode: 'admin', actionLabel: 'Rijd mee', declineLabel: 'Niet vanavond' },
-  { id: 2, name: 'Werk — Team Dev', type: 'weekrooster', emoji: '💼', joinMode: 'admin' },
-];
-
-const DEFAULT_MOMENTS = [
-  { id: 1, day: 'Woensdag', time: '18:45', label: 'Training', notifyBefore: 30, recurring: true },
-  { id: 2, day: 'Zaterdag', time: '14:00', label: 'Wedstrijd', notifyBefore: 60, recurring: true },
-];
-
-function generateMockPresence() {
-  const weekKey = getMonday(new Date()).toISOString().slice(0, 10);
-  const data = {};
-  data[weekKey] = {};
-  DEFAULT_MEMBERS.forEach((member, idx) => {
-    data[weekKey][member.short] = {
-      ochtend: [idx < 7, idx < 8, idx < 6, idx % 2 === 0, idx < 5],
-      middag: [idx < 5, idx < 7, idx < 8, idx < 6, idx < 3],
-    };
-  });
-  return data;
+// Helper: krijg maandag van deze week
+function getMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 export function AppProvider({ children }) {
-  const [groups, setGroups] = useState(DEFAULT_GROUPS);
-  const [members, setMembers] = useState(DEFAULT_MEMBERS);
-  const [moments, setMoments] = useState(DEFAULT_MOMENTS);
-  const [presence, setPresence] = useState(generateMockPresence);
-  const [notes, setNotes] = useState({});
-  const [toast, setToast] = useState(null);
-  const [undoStack, setUndoStack] = useState([]);
-  const [myStatus, setMyStatus] = useState({});
-  const [cancelledMoments, setCancelledMoments] = useState({});
+  const { user, profile } = useAuth();
+  const [groups, setGroups] = useState([]);
+  const [moments, setMoments] = useState([]);
+  const [responses, setResponses] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Toast functie
-  const showToast = useCallback((msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2000);
-  }, []);
+  const weekKey = getMonday(new Date()).toISOString().slice(0, 10);
 
-  // Presence functies
-  const togglePresence = useCallback((member, weekKey, dayIndex, period) => {
-    setUndoStack(prev => [...prev.slice(-19), JSON.parse(JSON.stringify(presence))]);
-    setPresence(prev => {
-      const updated = JSON.parse(JSON.stringify(prev));
-      if (!updated[weekKey]) updated[weekKey] = {};
-      if (!updated[weekKey][member]) {
-        updated[weekKey][member] = { ochtend: [false, false, false, false, false], middag: [false, false, false, false, false] };
-      }
-      updated[weekKey][member][period][dayIndex] = !updated[weekKey][member][period][dayIndex];
-      return updated;
-    });
-    showToast('Opgeslagen');
-  }, [presence, showToast]);
-
-  const fillWholeWeek = useCallback((member, weekKey) => {
-    setUndoStack(prev => [...prev.slice(-19), JSON.parse(JSON.stringify(presence))]);
-    setPresence(prev => {
-      const updated = JSON.parse(JSON.stringify(prev));
-      if (!updated[weekKey]) updated[weekKey] = {};
-      updated[weekKey][member] = { ochtend: [true, true, true, true, true], middag: [true, true, true, true, true] };
-      return updated;
-    });
-    showToast('Hele week gevuld');
-  }, [presence, showToast]);
-
-  const copyPreviousWeek = useCallback((member, weekKey) => {
-    const currentMonday = new Date(weekKey);
-    const prevMonday = new Date(currentMonday);
-    prevMonday.setDate(prevMonday.getDate() - 7);
-    const prevKey = prevMonday.toISOString().slice(0, 10);
-    const prevData = presence[prevKey]?.[member];
-    if (!prevData) {
-      showToast('Geen data van vorige week');
-      return;
-    }
-    setUndoStack(prev => [...prev.slice(-19), JSON.parse(JSON.stringify(presence))]);
-    setPresence(prev => {
-      const updated = JSON.parse(JSON.stringify(prev));
-      if (!updated[weekKey]) updated[weekKey] = {};
-      updated[weekKey][member] = JSON.parse(JSON.stringify(prevData));
-      return updated;
-    });
-    showToast('Vorige week gekopieerd');
-  }, [presence, showToast]);
-
-  const clearWeek = useCallback((member, weekKey) => {
-    setUndoStack(prev => [...prev.slice(-19), JSON.parse(JSON.stringify(presence))]);
-    setPresence(prev => {
-      const updated = JSON.parse(JSON.stringify(prev));
-      if (!updated[weekKey]) updated[weekKey] = {};
-      updated[weekKey][member] = { ochtend: [false, false, false, false, false], middag: [false, false, false, false, false] };
-      return updated;
-    });
-    showToast('Week gewist');
-  }, [presence, showToast]);
-
-  const undo = useCallback(() => {
-    if (undoStack.length === 0) return;
-    const prev = undoStack[undoStack.length - 1];
-    setPresence(prev);
-    setUndoStack(s => s.slice(0, -1));
-    showToast('Ongedaan gemaakt');
-  }, [undoStack, showToast]);
-
-  // Presence helpers
-  const getOchtend = useCallback((weekKey, member, dayIndex) => {
-    return presence[weekKey]?.[member]?.ochtend?.[dayIndex] || false;
-  }, [presence]);
-
-  const getMiddag = useCallback((weekKey, member, dayIndex) => {
-    return presence[weekKey]?.[member]?.middag?.[dayIndex] || false;
-  }, [presence]);
-
-  const hasPreviousWeekData = useCallback((member, weekKey) => {
-    const currentMonday = new Date(weekKey);
-    const prevMonday = new Date(currentMonday);
-    prevMonday.setDate(prevMonday.getDate() - 7);
-    const prevKey = prevMonday.toISOString().slice(0, 10);
-    return presence[prevKey]?.[member]?.ochtend?.some(v => v) || presence[prevKey]?.[member]?.middag?.some(v => v) || false;
-  }, [presence]);
-
-  // Notes functies
-  const getNoteKey = (weekKey, member, dayIndex) => `${weekKey}-${member}-${dayIndex}`;
-
-  const getNote = useCallback((weekKey, member, dayIndex) => {
-    return notes[getNoteKey(weekKey, member, dayIndex)] || '';
-  }, [notes]);
-
-  const saveNote = useCallback((weekKey, member, dayIndex, text) => {
-    const key = getNoteKey(weekKey, member, dayIndex);
-    if (text.trim()) {
-      setNotes(prev => ({ ...prev, [key]: text }));
+  // Laad data wanneer user inlogt
+  useEffect(() => {
+    if (user) {
+      loadAllData();
     } else {
-      setNotes(prev => {
-        const updated = { ...prev };
-        delete updated[key];
-        return updated;
-      });
+      setGroups([]);
+      setMoments([]);
+      setResponses([]);
+      setMembers([]);
+      setLoading(false);
     }
-    showToast('Notitie opgeslagen');
-  }, [showToast]);
+  }, [user]);
 
-  const deleteNote = useCallback((weekKey, member, dayIndex) => {
-    const key = getNoteKey(weekKey, member, dayIndex);
-    setNotes(prev => {
-      const updated = { ...prev };
-      delete updated[key];
-      return updated;
-    });
-    showToast('Notitie verwijderd');
-  }, [showToast]);
+  async function loadAllData() {
+    setLoading(true);
+    await Promise.all([
+      loadGroups(),
+      loadMoments(),
+      loadResponses(),
+      loadMembers(),
+    ]);
+    setLoading(false);
+  }
 
-  // Groups functies
-  const addGroup = useCallback((group) => {
-    const newGroup = { ...group, id: groups.length + 1 };
-    setGroups(prev => [...prev, newGroup]);
-    showToast('Groep aangemaakt');
-    return newGroup;
-  }, [groups, showToast]);
+  async function loadGroups() {
+    const { data } = await supabase
+      .from('groups')
+      .select('*')
+      .order('created_at');
+    setGroups(data || []);
+  }
 
-  const deleteGroup = useCallback((groupId) => {
+  async function loadMoments() {
+    const { data } = await supabase
+      .from('moments')
+      .select('*, groups(name, emoji)')
+      .order('time');
+    setMoments(data || []);
+  }
+
+  async function loadResponses() {
+    const { data } = await supabase
+      .from('moment_responses')
+      .select('*')
+      .eq('week_key', weekKey);
+    setResponses(data || []);
+  }
+
+  async function loadMembers() {
+    const { data } = await supabase
+      .from('group_members')
+      .select('*, profiles(id, username, display_name, role)');
+    setMembers(data || []);
+  }
+
+  // === ACTIES ===
+
+  async function addGroup(name, emoji) {
+    const { data, error } = await supabase
+      .from('groups')
+      .insert({ name, emoji, created_by: user.id })
+      .select()
+      .single();
+
+    if (error) throw error;
+    setGroups(prev => [...prev, data]);
+    return data;
+  }
+
+  async function updateGroup(groupId, updates) {
+    const { error } = await supabase
+      .from('groups')
+      .update(updates)
+      .eq('id', groupId);
+
+    if (error) throw error;
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...updates } : g));
+  }
+
+  async function deleteGroup(groupId) {
+    const { error } = await supabase
+      .from('groups')
+      .delete()
+      .eq('id', groupId);
+
+    if (error) throw error;
     setGroups(prev => prev.filter(g => g.id !== groupId));
-    showToast('Groep verwijderd');
-  }, [showToast]);
+    setMoments(prev => prev.filter(m => m.group_id !== groupId));
+  }
 
-  // Members functies
-  const removeMember = useCallback((memberId) => {
-    const member = members.find(m => m.id === memberId);
-    if (member) {
-      setPresence(prev => {
-        const updated = JSON.parse(JSON.stringify(prev));
-        Object.keys(updated).forEach(wk => { delete updated[wk][member.short]; });
-        return updated;
-      });
-    }
-    setMembers(prev => prev.filter(m => m.id !== memberId));
-    showToast('Lid verwijderd');
-  }, [members, showToast]);
+  async function addMember(groupId, userId) {
+    const { data, error } = await supabase
+      .from('group_members')
+      .insert({ group_id: groupId, user_id: userId })
+      .select('*, profiles(id, username, display_name, role)')
+      .single();
 
-  const promoteToAdmin = useCallback((memberId) => {
-    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, role: 'admin' } : m));
-    showToast('Admin-rechten toegekend');
-  }, [showToast]);
+    if (error) throw error;
+    setMembers(prev => [...prev, data]);
+  }
 
-  // Moments functies
-  const addMoment = useCallback((moment) => {
-    const newMoment = { ...moment, id: moments.length + 10 };
-    setMoments(prev => [...prev, newMoment]);
-    showToast('Moment toegevoegd');
-  }, [moments, showToast]);
+  async function removeMember(groupId, userId) {
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
 
-  const deleteMoment = useCallback((momentId) => {
+    if (error) throw error;
+    setMembers(prev => prev.filter(m => !(m.group_id === groupId && m.user_id === userId)));
+  }
+
+  async function addMoment(momentData) {
+    const { data, error } = await supabase
+      .from('moments')
+      .insert({ ...momentData, created_by: user.id })
+      .select('*, groups(name, emoji)')
+      .single();
+
+    if (error) throw error;
+    setMoments(prev => [...prev, data]);
+    return data;
+  }
+
+  async function updateMoment(momentId, updates) {
+    const { error } = await supabase
+      .from('moments')
+      .update(updates)
+      .eq('id', momentId);
+
+    if (error) throw error;
+    setMoments(prev => prev.map(m => m.id === momentId ? { ...m, ...updates } : m));
+  }
+
+  async function deleteMoment(momentId) {
+    const { error } = await supabase
+      .from('moments')
+      .delete()
+      .eq('id', momentId);
+
+    if (error) throw error;
     setMoments(prev => prev.filter(m => m.id !== momentId));
-    showToast('Moment verwijderd');
-  }, [showToast]);
+  }
 
-  const setMomentStatus = useCallback((momentId, status) => {
-    setMyStatus(prev => ({ ...prev, [momentId]: status }));
-    showToast('Reactie opgeslagen');
-  }, [showToast]);
+  async function setResponse(momentId, status) {
+    const { data, error } = await supabase
+      .from('moment_responses')
+      .upsert(
+        {
+          moment_id: momentId,
+          user_id: user.id,
+          week_key: weekKey,
+          status,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'moment_id,user_id,week_key' }
+      )
+      .select()
+      .single();
 
-  const cancelMoment = useCallback((momentId) => {
-    setCancelledMoments(prev => ({ ...prev, [momentId]: true }));
-    showToast('Moment afgelast');
-  }, [showToast]);
+    if (error) throw error;
+
+    setResponses(prev => {
+      const existing = prev.findIndex(
+        r => r.moment_id === momentId && r.user_id === user.id && r.week_key === weekKey
+      );
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = data;
+        return updated;
+      }
+      return [...prev, data];
+    });
+  }
+
+  // === HELPERS ===
+
+  function getMyGroups() {
+    const myGroupIds = members
+      .filter(m => m.user_id === user?.id)
+      .map(m => m.group_id);
+    return groups.filter(g => myGroupIds.includes(g.id));
+  }
+
+  function getGroupMembers(groupId) {
+    return members
+      .filter(m => m.group_id === groupId)
+      .map(m => m.profiles)
+      .filter(Boolean);
+  }
+
+  function getGroupMoments(groupId) {
+    return moments.filter(m => m.group_id === groupId);
+  }
+
+  function getMomentResponses(momentId) {
+    return responses.filter(r => r.moment_id === momentId && r.week_key === weekKey);
+  }
+
+  function getMyResponse(momentId) {
+    return responses.find(
+      r => r.moment_id === momentId && r.user_id === user?.id && r.week_key === weekKey
+    );
+  }
+
+  function getTodaysMoments() {
+    const today = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][new Date().getDay()];
+    const myGroupIds = members
+      .filter(m => m.user_id === user?.id)
+      .map(m => m.group_id);
+    return moments.filter(m => m.day === today && myGroupIds.includes(m.group_id) && !m.cancelled);
+  }
 
   const value = {
-    // State
     groups,
-    members,
     moments,
-    presence,
-    notes,
-    toast,
-    undoStack,
-    myStatus,
-    cancelledMoments,
-
-    // Toast
-    showToast,
-
-    // Presence
-    togglePresence,
-    fillWholeWeek,
-    copyPreviousWeek,
-    clearWeek,
-    undo,
-    getOchtend,
-    getMiddag,
-    hasPreviousWeekData,
-
-    // Notes
-    getNote,
-    saveNote,
-    deleteNote,
-
-    // Groups
+    responses,
+    members,
+    loading,
+    weekKey,
+    // Acties
     addGroup,
+    updateGroup,
     deleteGroup,
-    setGroups,
-
-    // Members
+    addMember,
     removeMember,
-    promoteToAdmin,
-    setMembers,
-
-    // Moments
     addMoment,
+    updateMoment,
     deleteMoment,
-    setMomentStatus,
-    cancelMoment,
+    setResponse,
+    loadAllData,
+    // Helpers
+    getMyGroups,
+    getGroupMembers,
+    getGroupMoments,
+    getMomentResponses,
+    getMyResponse,
+    getTodaysMoments,
   };
 
   return (
