@@ -19,14 +19,6 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-// VAPID configuratie
-webpush.setVapidDetails(
-  'mailto:' + (process.env.VAPID_EMAIL || 'admin@teamsync.app'),
-  process.env.VITE_VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
-
-export default async function handler(req, res) {
   try {
     const now = new Date();
     const currentDay = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][now.getDay()];
@@ -75,7 +67,7 @@ export default async function handler(req, res) {
 
         if (subError || !subscriptions) continue;
 
-        // Check wie nog niet gereageerd heeft (optioneel)
+        // Check wie nog niet gereageerd heeft
         const weekKey = getMonday(now).toISOString().slice(0, 10);
         const { data: responses } = await supabase
           .from('moment_responses')
@@ -85,7 +77,7 @@ export default async function handler(req, res) {
 
         const respondedUserIds = (responses || []).map(r => r.user_id);
 
-        // Stuur push naar iedereen (of alleen niet-gereageerden)
+        // Stuur push naar iedereen
         for (const sub of subscriptions) {
           const hasResponded = respondedUserIds.includes(sub.user_id);
 
@@ -110,7 +102,6 @@ export default async function handler(req, res) {
             await webpush.sendNotification(pushSubscription, payload);
             totalSent++;
           } catch (pushError) {
-            // Als subscription verlopen is, verwijder het
             if (pushError.statusCode === 410) {
               await supabase
                 .from('push_subscriptions')
