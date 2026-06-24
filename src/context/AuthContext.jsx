@@ -1,95 +1,107 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
-const AuthContext = createContext(null);
-
-// Mock user data - wordt later vervangen door Supabase auth
-const MOCK_USERS = [
-  { id: 1, username: 'sander.visser', name: 'Sander Visser', short: 'Sander', email: 'sander@voorbeeld.nl', role: 'admin' },
-  { id: 2, username: 'thomas.bakker', name: 'Thomas Bakker', short: 'Thomas', email: 'thomas@voorbeeld.nl', role: 'lid' },
-  { id: 3, username: 'daan.devries', name: 'Daan de Vries', short: 'Daan', email: 'daan@voorbeeld.nl', role: 'lid' },
-  { id: 4, username: 'luuk.jansen', name: 'Luuk Jansen', short: 'Luuk', email: 'luuk@voorbeeld.nl', role: 'lid' },
-  { id: 5, username: 'bram.mulder', name: 'Bram Mulder', short: 'Bram', email: 'bram@voorbeeld.nl', role: 'lid' },
-  { id: 6, username: 'jesse.deboer', name: 'Jesse de Boer', short: 'Jesse', email: 'jesse@voorbeeld.nl', role: 'lid' },
-  { id: 7, username: 'ruben.smit', name: 'Ruben Smit', short: 'Ruben', email: 'ruben@voorbeeld.nl', role: 'lid' },
-  { id: 8, username: 'stijn.peters', name: 'Stijn Peters', short: 'Stijn', email: 'stijn@voorbeeld.nl', role: 'lid' },
-];
+const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Simuleer sessie-check bij opstarten
   useEffect(() => {
-    const savedUser = null; // Later: check Supabase sessie
-    setUser(savedUser);
-    setLoading(false);
+    // Check huidige sessie
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Luister naar auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          await fetchProfile(session.user.id);
+        } else {
+          setUser(null);
+          setProfile(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (username, password) => {
-    // Mock login - later: supabase.auth.signInWithPassword()
-    if (!username || !password) {
-      return { error: 'Vul beide velden in.' };
+  async function fetchProfile(userId) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (data) {
+      setProfile(data);
+    }
+    setLoading(false);
+  }
+
+  async function login(username, password) {
+    const email = `${username}@teamsync.app`;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error('Onjuiste gebruikersnaam of wachtwoord');
     }
 
-    const foundUser = MOCK_USERS.find(u => u.username === username.toLowerCase());
-    if (!foundUser) {
-      // In mock mode: accepteer elke combinatie, log in als eerste user
-      setUser(MOCK_USERS[0]);
-      return { error: null };
-    }
+    return data;
+  }
 
-    setUser(foundUser);
-    return { error: null };
-  };
-
-  const register = async (username, email, password) => {
-    // Mock register - later: supabase.auth.signUp()
-    if (!username || !email || !password) {
-      return { error: 'Vul alle velden in.' };
-    }
-    if (password.length < 8) {
-      return { error: 'Wachtwoord moet minimaal 8 tekens zijn.' };
-    }
-    if (!email.includes('@')) {
-      return { error: 'Vul een geldig e-mailadres in.' };
-    }
-
-    return { error: null };
-  };
-
-  const logout = async () => {
-    // Later: supabase.auth.signOut()
+  async function logout() {
+    await supabase.auth.signOut();
     setUser(null);
-  };
+    setProfile(null);
+  }
 
-  const resetPassword = async (email) => {
-    // Later: supabase.auth.resetPasswordForEmail()
-    if (!email || !email.includes('@')) {
-      return { error: 'Vul een geldig e-mailadres in.' };
-    }
-    return { error: null };
-  };
+  async function createUser(username, displayName, password, role = 'member') {
+    const email = `${username}@teamsync.app`;
 
-  const changePassword = async (oldPassword, newPassword) => {
-    // Later: supabase.auth.updateUser()
-    if (!oldPassword || !newPassword) {
-      return { error: 'Vul alle velden in.' };
-    }
-    if (newPassword.length < 8) {
-      return { error: 'Minimaal 8 tekens.' };
-    }
-    return { error: null };
-  };
+    // Maak auth user aan via Supabase
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) throw authError;
+
+    // Maak profiel aan
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        username,
+        display_name: displayName,
+        role,
+      });
+
+    if (profileError) throw profileError;
+
+    return authData.user;
+  }
 
   const value = {
     user,
+    profile,
     loading,
     login,
-    register,
     logout,
-    resetPassword,
-    changePassword,
-    isAdmin: user?.role === 'admin',
+    createUser,
+    isAdmin: profile?.role === 'admin',
   };
 
   return (
