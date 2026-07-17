@@ -39,6 +39,7 @@ export default function ScheduleScreen({ group, onNavigate }) {
         time: newTime,
         notify_before: newNotify,
         recurring: newRecurring,
+        period: 'week',
       });
       // Reset form
       setNewLabel('');
