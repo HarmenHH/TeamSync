@@ -3,6 +3,14 @@ import { useApp } from '../../context/AppContext.jsx';
 
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
+// Bepaal periode op basis van tijd
+const getPeriod = (time) => {
+  const hour = parseInt(time.split(':')[0], 10);
+  if (hour < 12) return 'ochtend';
+  if (hour < 18) return 'middag';
+  return 'avond';
+};
+
 export default function ScheduleScreen({ group, onNavigate }) {
   const { moments, addMoment, deleteMoment } = useApp();
   const [showForm, setShowForm] = useState(false);
@@ -39,7 +47,7 @@ export default function ScheduleScreen({ group, onNavigate }) {
         time: newTime,
         notify_before: newNotify,
         recurring: newRecurring,
-        period: 'week',
+        period: getPeriod(newTime),
       });
       // Reset form
       setNewLabel('');
@@ -121,7 +129,7 @@ export default function ScheduleScreen({ group, onNavigate }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-sky-50 rounded-xl flex items-center justify-center">
-                    <span className="text-sm font-bold text-sky-600">{moment.time}</span>
+                    <span className="text-sm font-bold text-sky-600">{moment.time?.slice(0, 5)}</span>
                   </div>
                   <div>
                     <p className="font-semibold text-slate-800 text-sm">{moment.label}</p>
@@ -132,9 +140,9 @@ export default function ScheduleScreen({ group, onNavigate }) {
                           Wekelijks
                         </span>
                       )}
-                      {(moment.notify_before > 0 || moment.notifyBefore > 0) && (
+                      {moment.notify_before > 0 && (
                         <span className="text-xs text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
-                          🔔 {moment.notify_before || moment.notifyBefore}min
+                          🔔 {moment.notify_before}min
                         </span>
                       )}
                     </div>
@@ -271,7 +279,7 @@ export default function ScheduleScreen({ group, onNavigate }) {
           <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
             <h3 className="font-bold text-slate-800 text-lg mb-2">Moment verwijderen?</h3>
             <p className="text-sm text-slate-500 mb-4">
-              Weet je zeker dat je <span className="font-semibold">{confirmDelete.label}</span> ({confirmDelete.day}, {confirmDelete.time}) wilt verwijderen?
+              Weet je zeker dat je <span className="font-semibold">{confirmDelete.label}</span> ({confirmDelete.day}, {confirmDelete.time?.slice(0, 5)}) wilt verwijderen?
             </p>
             <div className="flex gap-3">
               <button
