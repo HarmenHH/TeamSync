@@ -4,9 +4,14 @@ import { useApp } from '../../context/AppContext.jsx';
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
 export default function ScheduleScreen({ group, onNavigate }) {
-  const { moments, addMoment, deleteMoment, showToast } = useApp();
+  const { moments, addMoment, deleteMoment } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [toast, setToast] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Filter momenten voor deze groep
+  const groupMoments = moments.filter(m => m.group_id === group?.id);
 
   // Form state
   const [newLabel, setNewLabel] = useState('');
@@ -15,40 +20,66 @@ export default function ScheduleScreen({ group, onNavigate }) {
   const [newNotify, setNewNotify] = useState(30);
   const [newRecurring, setNewRecurring] = useState(true);
 
-  const handleAdd = () => {
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  };
+
+  const handleAdd = async () => {
     if (!newLabel.trim()) {
       showToast('Vul een naam in');
       return;
     }
-    addMoment({
-      label: newLabel.trim(),
-      day: newDay,
-      time: newTime,
-      notifyBefore: newNotify,
-      recurring: newRecurring,
-    });
-    // Reset form
-    setNewLabel('');
-    setNewDay('Maandag');
-    setNewTime('18:00');
-    setNewNotify(30);
-    setNewRecurring(true);
-    setShowForm(false);
+    setSaving(true);
+    try {
+      await addMoment({
+        group_id: group.id,
+        label: newLabel.trim(),
+        day: newDay,
+        time: newTime,
+        notify_before: newNotify,
+        recurring: newRecurring,
+      });
+      // Reset form
+      setNewLabel('');
+      setNewDay('Maandag');
+      setNewTime('18:00');
+      setNewNotify(30);
+      setNewRecurring(true);
+      setShowForm(false);
+      showToast('Moment toegevoegd ✓');
+    } catch (error) {
+      console.error('Fout bij opslaan:', error);
+      showToast('Opslaan mislukt: ' + error.message);
+    }
+    setSaving(false);
   };
 
   const handleDelete = (moment) => {
     setConfirmDelete(moment);
   };
 
-  const confirmDeleteMoment = () => {
+  const confirmDeleteMoment = async () => {
     if (confirmDelete) {
-      deleteMoment(confirmDelete.id);
-      setConfirmDelete(null);
+      try {
+        await deleteMoment(confirmDelete.id);
+        setConfirmDelete(null);
+        showToast('Moment verwijderd');
+      } catch (error) {
+        showToast('Verwijderen mislukt');
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Toast melding */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-2 rounded-xl text-sm shadow-lg">
+          {toast}
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-6 py-4">
         <div className="max-w-lg mx-auto">
@@ -74,14 +105,14 @@ export default function ScheduleScreen({ group, onNavigate }) {
       <div className="px-6 py-6 max-w-lg mx-auto">
         {/* Bestaande momenten */}
         <div className="space-y-3 mb-6">
-          {moments.length === 0 && !showForm && (
+          {groupMoments.length === 0 && !showForm && (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">📭</div>
               <p className="text-slate-400 text-sm">Nog geen momenten ingesteld.</p>
             </div>
           )}
 
-          {moments.map((moment) => (
+          {groupMoments.map((moment) => (
             <div
               key={moment.id}
               className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100"
@@ -100,9 +131,9 @@ export default function ScheduleScreen({ group, onNavigate }) {
                           Wekelijks
                         </span>
                       )}
-                      {moment.notifyBefore > 0 && (
+                      {(moment.notify_before > 0 || moment.notifyBefore > 0) && (
                         <span className="text-xs text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
-                          🔔 {moment.notifyBefore}min
+                          🔔 {moment.notify_before || moment.notifyBefore}min
                         </span>
                       )}
                     </div>
@@ -210,9 +241,10 @@ export default function ScheduleScreen({ group, onNavigate }) {
               </button>
               <button
                 onClick={handleAdd}
-                className="flex-1 py-2.5 bg-sky-600 text-white font-medium rounded-xl hover:bg-sky-700 transition"
+                disabled={saving}
+                className="flex-1 py-2.5 bg-sky-600 text-white font-medium rounded-xl hover:bg-sky-700 transition disabled:opacity-50"
               >
-                Toevoegen
+                {saving ? 'Opslaan...' : 'Toevoegen'}
               </button>
             </div>
           </div>
