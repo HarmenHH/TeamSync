@@ -16,14 +16,16 @@ export default function SamenDetail({ group, onNavigate }) {
   const groupMembers = getGroupMembers(group?.id);
 
   const getStatusColor = (status) => {
-    if (status === 'join') return 'bg-green-100 text-green-700 border-green-200';
-    if (status === 'decline') return 'bg-red-50 text-red-600 border-red-200';
+    if (status === 'aanwezig') return 'bg-green-100 text-green-700 border-green-200';
+    if (status === 'afwezig') return 'bg-red-50 text-red-600 border-red-200';
+    if (status === 'misschien') return 'bg-amber-50 text-amber-600 border-amber-200';
     return 'bg-slate-50 text-slate-500 border-slate-200';
   };
 
   const getStatusLabel = (status) => {
-    if (status === 'join') return '✓ Doet mee';
-    if (status === 'decline') return '✗ Niet vanavond';
+    if (status === 'aanwezig') return '✓ Doet mee';
+    if (status === 'afwezig') return '✗ Niet vanavond';
+    if (status === 'misschien') return '? Misschien';
     return '? Nog niet gereageerd';
   };
 
@@ -96,9 +98,9 @@ export default function SamenDetail({ group, onNavigate }) {
                 {!isCancelled && (
                   <div className="flex gap-2 mb-4">
                     <button
-                      onClick={() => setResponse(moment.id, 'join')}
+                      onClick={() => setResponse(moment.id, 'aanwezig')}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                        currentStatus === 'join'
+                        currentStatus === 'aanwezig'
                           ? 'bg-green-500 text-white border-green-500'
                           : 'bg-white text-green-600 border-green-200 hover:bg-green-50'
                       }`}
@@ -106,9 +108,9 @@ export default function SamenDetail({ group, onNavigate }) {
                       {group?.actionLabel || 'Doe mee'}
                     </button>
                     <button
-                      onClick={() => setResponse(moment.id, 'decline')}
+                      onClick={() => setResponse(moment.id, 'afwezig')}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
-                        currentStatus === 'decline'
+                        currentStatus === 'afwezig'
                           ? 'bg-red-500 text-white border-red-500'
                           : 'bg-white text-red-500 border-red-200 hover:bg-red-50'
                       }`}
