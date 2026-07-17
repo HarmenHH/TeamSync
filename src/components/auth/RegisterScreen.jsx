@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function RegisterScreen({ onGoLogin, onShowPrivacy }) {
   const { register } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,11 +12,23 @@ export default function RegisterScreen({ onGoLogin, onShowPrivacy }) {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Auto-genereer gebruikersnaam uit naam
+  const handleNameChange = (value) => {
+    setFullName(value);
+    const generated = value
+      .trim()
+      .split(/\s+/)
+      .filter(word => word.length > 0)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('.');
+    setUsername(generated);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!username.trim() || !email.trim() || !password || !confirmPassword) {
+    if (!fullName.trim() || !username.trim() || !email.trim() || !password || !confirmPassword) {
       setError('Vul alle velden in.');
       return;
     }
@@ -41,7 +54,7 @@ export default function RegisterScreen({ onGoLogin, onShowPrivacy }) {
     }
 
     setLoading(true);
-    const result = await register(username.trim().toLowerCase(), email.trim().toLowerCase(), password);
+    const result = await register(username.trim().toLowerCase(), email.trim().toLowerCase(), password, fullName.trim());
     if (result.error) {
       setError(result.error);
     } else {
@@ -86,6 +99,22 @@ export default function RegisterScreen({ onGoLogin, onShowPrivacy }) {
 
         {/* Formulier */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Naam veld (nieuw) */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Volledige naam
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="Voornaam Achternaam"
+              autoCapitalize="words"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
+            />
+          </div>
+
+          {/* Gebruikersnaam (auto-gegenereerd) */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Gebruikersnaam
@@ -97,8 +126,9 @@ export default function RegisterScreen({ onGoLogin, onShowPrivacy }) {
               placeholder="voornaam.achternaam"
               autoCapitalize="none"
               autoCorrect="off"
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
             />
+            <p className="text-xs text-slate-400 mt-1">Wordt automatisch ingevuld op basis van je naam</p>
           </div>
 
           <div>
