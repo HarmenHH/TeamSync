@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isRegistering = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -20,6 +21,9 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Skip tijdens registratie
+        if (isRegistering.current) return;
+
         if (session?.user) {
           setUser(session.user);
           await fetchProfile(session.user.id);
@@ -61,7 +65,8 @@ export function AuthProvider({ children }) {
   }
 
   async function register(username, email, password, displayName) {
-    // We gebruiken username@teamsync.app als auth-email (voor login met username)
+    isRegistering.current = true;
+
     const authEmail = `${username}@teamsync.app`;
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -69,11 +74,17 @@ export function AuthProvider({ children }) {
       password,
     });
 
-    if (authError) return { error: authError.message };
+    if (authError) {
+      isRegistering.current = false;
+      return { error: authError.message };
+    }
 
-    if (!authData.user) return { error: 'Registratie mislukt. Probeer opnieuw.' };
+    if (!authData.user) {
+      isRegistering.current = false;
+      return { error: 'Registratie mislukt. Probeer opnieuw.' };
+    }
 
-    // Maak profiel aan met display_name
+    // Maak profiel aan
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
@@ -83,10 +94,14 @@ export function AuthProvider({ children }) {
         role: 'member',
       });
 
-    if (profileError) return { error: profileError.message };
+    if (profileError) {
+      isRegistering.current = false;
+      return { error: profileError.message };
+    }
 
     // Log uit zodat gebruiker zelf kan inloggen
     await supabase.auth.signOut();
+    isRegistering.current = false;
 
     return { success: true };
   }
