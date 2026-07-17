@@ -9,7 +9,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check huidige sessie
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
@@ -19,7 +18,6 @@ export function AuthProvider({ children }) {
       }
     });
 
-    // Luister naar auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
@@ -36,7 +34,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function fetchProfile(userId) {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -62,6 +60,37 @@ export function AuthProvider({ children }) {
     return data;
   }
 
+  async function register(username, email, password, displayName) {
+    // We gebruiken username@teamsync.app als auth-email (voor login met username)
+    const authEmail = `${username}@teamsync.app`;
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: authEmail,
+      password,
+    });
+
+    if (authError) return { error: authError.message };
+
+    if (!authData.user) return { error: 'Registratie mislukt. Probeer opnieuw.' };
+
+    // Maak profiel aan met display_name
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        username,
+        display_name: displayName || username,
+        role: 'member',
+      });
+
+    if (profileError) return { error: profileError.message };
+
+    // Log uit zodat gebruiker zelf kan inloggen
+    await supabase.auth.signOut();
+
+    return { success: true };
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     setUser(null);
@@ -71,7 +100,6 @@ export function AuthProvider({ children }) {
   async function createUser(username, displayName, password, role = 'member') {
     const email = `${username}@teamsync.app`;
 
-    // Maak auth user aan via Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -79,7 +107,6 @@ export function AuthProvider({ children }) {
 
     if (authError) throw authError;
 
-    // Maak profiel aan
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
@@ -100,6 +127,7 @@ export function AuthProvider({ children }) {
     loading,
     login,
     logout,
+    register,
     createUser,
     isAdmin: profile?.role === 'admin',
   };
