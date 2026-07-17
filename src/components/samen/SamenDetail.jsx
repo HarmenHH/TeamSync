@@ -3,8 +3,17 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 
 export default function SamenDetail({ group, onNavigate }) {
-  const { user, isAdmin } = useAuth();
-  const { moments, members, myStatus, cancelledMoments, setMomentStatus, cancelMoment, showToast } = useApp();
+  const { user } = useAuth();
+  const { 
+    getGroupMoments, 
+    getGroupMembers, 
+    getMyResponse, 
+    getMomentResponses, 
+    setResponse 
+  } = useApp();
+
+  const groupMoments = getGroupMoments(group?.id);
+  const groupMembers = getGroupMembers(group?.id);
 
   const getStatusColor = (status) => {
     if (status === 'join') return 'bg-green-100 text-green-700 border-green-200';
@@ -47,9 +56,11 @@ export default function SamenDetail({ group, onNavigate }) {
       <div className="px-6 py-6 max-w-lg mx-auto">
         {/* Momenten */}
         <div className="space-y-4">
-          {moments.map((moment) => {
-            const isCancelled = cancelledMoments[moment.id];
-            const currentStatus = myStatus[moment.id];
+          {groupMoments.map((moment) => {
+            const isCancelled = moment.cancelled;
+            const myResponse = getMyResponse(moment.id);
+            const currentStatus = myResponse?.status;
+            const allResponses = getMomentResponses(moment.id);
 
             return (
               <div
@@ -63,7 +74,7 @@ export default function SamenDetail({ group, onNavigate }) {
                       {moment.label}
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {moment.day} • {moment.time}
+                      {moment.day} • {moment.time?.slice(0, 5)}
                       {moment.recurring && ' • Wekelijks'}
                     </p>
                   </div>
@@ -85,7 +96,7 @@ export default function SamenDetail({ group, onNavigate }) {
                 {!isCancelled && (
                   <div className="flex gap-2 mb-4">
                     <button
-                      onClick={() => setMomentStatus(moment.id, 'join')}
+                      onClick={() => setResponse(moment.id, 'join')}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
                         currentStatus === 'join'
                           ? 'bg-green-500 text-white border-green-500'
@@ -95,7 +106,7 @@ export default function SamenDetail({ group, onNavigate }) {
                       {group?.actionLabel || 'Doe mee'}
                     </button>
                     <button
-                      onClick={() => setMomentStatus(moment.id, 'decline')}
+                      onClick={() => setResponse(moment.id, 'decline')}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
                         currentStatus === 'decline'
                           ? 'bg-red-500 text-white border-red-500'
@@ -109,67 +120,56 @@ export default function SamenDetail({ group, onNavigate }) {
 
                 {/* Deelnemers overzicht */}
                 <div className="border-t border-slate-100 pt-3">
-                  <p className="text-xs font-medium text-slate-500 mb-2">Reacties</p>
+                  <p className="text-xs font-medium text-slate-500 mb-2">
+                    Reacties ({allResponses.length}/{groupMembers.length})
+                  </p>
                   <div className="space-y-1.5">
-                    {/* Eigen status */}
-                    {currentStatus && (
-                      <div className={`flex items-center justify-between px-3 py-1.5 rounded-lg border ${getStatusColor(currentStatus)}`}>
-                        <span className="text-xs font-medium">{user?.short || 'Jij'}</span>
-                        <span className="text-xs">{getStatusLabel(currentStatus)}</span>
-                      </div>
-                    )}
-
-                    {/* Mock reacties van anderen */}
-                    {members.slice(1, 5).map((member, idx) => {
-                      const mockStatus = idx < 2 ? 'join' : idx === 2 ? 'decline' : null;
-                      if (!mockStatus) return null;
+                    {allResponses.map((response) => {
+                      const member = groupMembers.find(m => m.id === response.user_id);
+                      const name = member?.display_name || member?.username || 'Onbekend';
+                      const isMe = response.user_id === user?.id;
                       return (
                         <div
-                          key={member.id}
-                          className={`flex items-center justify-between px-3 py-1.5 rounded-lg border ${getStatusColor(mockStatus)}`}
+                          key={response.id || response.user_id}
+                          className={`flex items-center justify-between px-3 py-1.5 rounded-lg border ${getStatusColor(response.status)}`}
                         >
-                          <span className="text-xs font-medium">{member.short}</span>
-                          <span className="text-xs">{getStatusLabel(mockStatus)}</span>
+                          <span className="text-xs font-medium">
+                            {isMe ? 'Jij' : name}
+                          </span>
+                          <span className="text-xs">{getStatusLabel(response.status)}</span>
                         </div>
                       );
                     })}
 
-                    {/* Nog niet gereageerd */}
-                    <p className="text-xs text-slate-400 mt-2">
-                      {members.length - 4} leden hebben nog niet gereageerd
-                    </p>
+                    {allResponses.length === 0 && (
+                      <p className="text-xs text-slate-400">
+                        Nog niemand heeft gereageerd
+                      </p>
+                    )}
+
+                    {allResponses.length > 0 && allResponses.length < groupMembers.length && (
+                      <p className="text-xs text-slate-400 mt-2">
+                        {groupMembers.length - allResponses.length} leden hebben nog niet gereageerd
+                      </p>
+                    )}
                   </div>
                 </div>
-
-                {/* Admin: afgelasten */}
-                {isAdmin && !isCancelled && (
-                  <div className="border-t border-slate-100 pt-3 mt-3">
-                    <button
-                      onClick={() => cancelMoment(moment.id)}
-                      className="text-xs text-red-400 hover:text-red-500 font-medium"
-                    >
-                      Moment afgelasten
-                    </button>
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
 
         {/* Geen momenten */}
-        {moments.length === 0 && (
+        {groupMoments.length === 0 && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">📭</div>
             <p className="text-slate-400 text-sm">Nog geen momenten ingesteld.</p>
-            {isAdmin && (
-              <button
-                onClick={() => onNavigate('schedule', group)}
-                className="mt-3 text-sm text-sky-600 font-medium"
-              >
-                Momenten instellen →
-              </button>
-            )}
+            <button
+              onClick={() => onNavigate('schedule', group)}
+              className="mt-3 text-sm text-sky-600 font-medium"
+            >
+              Momenten instellen →
+            </button>
           </div>
         )}
 
@@ -184,16 +184,14 @@ export default function SamenDetail({ group, onNavigate }) {
         </div>
 
         {/* Admin link */}
-        {isAdmin && (
-          <div className="mt-3">
-            <button
-              onClick={() => onNavigate('admin_dashboard', group)}
-              className="w-full py-3 bg-white rounded-2xl border border-slate-100 shadow-sm text-sm text-slate-600 font-medium hover:bg-slate-50 transition"
-            >
-              ⚙️ Groep beheren
-            </button>
-          </div>
-        )}
+        <div className="mt-3">
+          <button
+            onClick={() => onNavigate('admin_dashboard', group)}
+            className="w-full py-3 bg-white rounded-2xl border border-slate-100 shadow-sm text-sm text-slate-600 font-medium hover:bg-slate-50 transition"
+          >
+            ⚙️ Groep beheren
+          </button>
+        </div>
       </div>
     </div>
   );
