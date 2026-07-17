@@ -53,7 +53,15 @@ export function AppProvider({ children }) {
       .from('groups')
       .select('*')
       .order('created_at');
-    setGroups(data || []);
+
+    // Map snake_case naar camelCase
+    const mapped = (data || []).map(g => ({
+      ...g,
+      joinMode: g.join_mode,
+      actionLabel: g.action_label,
+      declineLabel: g.decline_label,
+    }));
+    setGroups(mapped);
   }
 
   async function loadMoments() {
@@ -81,22 +89,47 @@ export function AppProvider({ children }) {
 
   // === ACTIES ===
 
-  async function addGroup(name, emoji) {
+  async function addGroup(groupData) {
     const { data, error } = await supabase
       .from('groups')
-      .insert({ name, emoji, created_by: user.id })
+      .insert({
+        name: groupData.name,
+        emoji: groupData.emoji,
+        type: groupData.type || 'samen',
+        join_mode: groupData.joinMode || 'admin',
+        action_label: groupData.actionLabel || 'Doe mee',
+        decline_label: groupData.declineLabel || 'Niet vanavond',
+        created_by: user.id,
+      })
       .select()
       .single();
 
     if (error) throw error;
-    setGroups(prev => [...prev, data]);
-    return data;
+
+    // Map terug naar camelCase
+    const mapped = {
+      ...data,
+      joinMode: data.join_mode,
+      actionLabel: data.action_label,
+      declineLabel: data.decline_label,
+    };
+    setGroups(prev => [...prev, mapped]);
+    return mapped;
   }
 
   async function updateGroup(groupId, updates) {
+    // Map camelCase naar snake_case voor Supabase
+    const dbUpdates = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
+    if (updates.type !== undefined) dbUpdates.type = updates.type;
+    if (updates.joinMode !== undefined) dbUpdates.join_mode = updates.joinMode;
+    if (updates.actionLabel !== undefined) dbUpdates.action_label = updates.actionLabel;
+    if (updates.declineLabel !== undefined) dbUpdates.decline_label = updates.declineLabel;
+
     const { error } = await supabase
       .from('groups')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', groupId);
 
     if (error) throw error;
@@ -239,6 +272,7 @@ export function AppProvider({ children }) {
 
   const value = {
     groups,
+    setGroups,
     moments,
     responses,
     members,
