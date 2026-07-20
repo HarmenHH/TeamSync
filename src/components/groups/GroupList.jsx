@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 
 export default function GroupList({ onNavigate, onShowPrivacy }) {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, profile, logout, isAdmin } = useAuth();
   const { groups } = useApp();
 
   const handleGroupClick = (group) => {
@@ -26,7 +26,7 @@ export default function GroupList({ onNavigate, onShowPrivacy }) {
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <div>
             <h1 className="text-lg font-bold text-slate-800">
-              Hoi {user?.short || 'daar'} 👋
+              Hoi {profile?.display_name || 'daar'} 👋
             </h1>
             <p className="text-xs text-slate-400">Kies een groep</p>
           </div>

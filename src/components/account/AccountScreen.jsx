@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 
 export default function AccountScreen({ onNavigate, onShowPrivacy }) {
-  const { user, logout, changePassword } = useAuth();
+  const { user, profile, logout, changePassword } = useAuth();
   const { showToast } = useApp();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
@@ -70,12 +70,12 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
           <div className="flex items-center gap-4 mb-4">
             <div className="w-14 h-14 bg-sky-100 rounded-full flex items-center justify-center">
               <span className="text-2xl font-bold text-sky-600">
-                {user?.short?.charAt(0) || '?'}
+                {profile?.display_name?.charAt(0) || '?'}
               </span>
             </div>
             <div>
-              <h2 className="font-bold text-slate-800">{user?.name || 'Gebruiker'}</h2>
-              <p className="text-sm text-slate-400">@{user?.username || 'onbekend'}</p>
+              <h2 className="font-bold text-slate-800">{profile?.display_name || 'Gebruiker'}</h2>
+              <p className="text-sm text-slate-400">@{profile?.username || 'onbekend'}</p>
             </div>
           </div>
 
@@ -87,17 +87,18 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-500">Rol</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                user?.role === 'admin'
+                profile?.role === 'admin'
                   ? 'bg-amber-100 text-amber-700'
                   : 'bg-slate-100 text-slate-500'
               }`}>
-                {user?.role === 'admin' ? 'Admin' : 'Lid'}
+                {profile?.role === 'admin' ? 'Admin' : 'Lid'}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-500">Gebruikersnaam</span>
-              <span className="text-sm text-slate-800 font-mono">{user?.username || '—'}</span>
+              <span className="text-sm text-slate-800 font-mono">{profile?.username || '—'}</span>
             </div>
+
           </div>
         </div>
 

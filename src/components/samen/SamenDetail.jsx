@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 
 export default function SamenDetail({ group, onNavigate }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { 
     getGroupMoments, 
     getGroupMembers, 
@@ -185,15 +185,17 @@ export default function SamenDetail({ group, onNavigate }) {
           </button>
         </div>
 
-        {/* Admin link */}
-        <div className="mt-3">
-          <button
-            onClick={() => onNavigate('admin_dashboard', group)}
-            className="w-full py-3 bg-white rounded-2xl border border-slate-100 shadow-sm text-sm text-slate-600 font-medium hover:bg-slate-50 transition"
-          >
-            ⚙️ Groep beheren
-          </button>
-        </div>
+        {/* Admin link — alleen voor admins */}
+        {isAdmin && (
+          <div className="mt-3">
+            <button
+              onClick={() => onNavigate('admin_dashboard', group)}
+              className="w-full py-3 bg-white rounded-2xl border border-slate-100 shadow-sm text-sm text-slate-600 font-medium hover:bg-slate-50 transition"
+            >
+              ⚙️ Groep beheren
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
