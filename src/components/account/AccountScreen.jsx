@@ -12,7 +12,7 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 
 export default function AccountScreen({ onNavigate, onShowPrivacy }) {
   const { user, profile, logout, changePassword, updateProfile } = useAuth();
-  const { showToast } = useApp();
+  const { showToast, resetRequests, loadResetRequests } = useApp();
   const { theme, toggleTheme } = useTheme();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
@@ -23,6 +23,14 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSupported, setPushSupported] = useState(true);
   const [pushLoading, setPushLoading] = useState(false);
+
+  const pendingResetCount = resetRequests.filter(r => r.status === 'pending').length;
+
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      loadResetRequests();
+    }
+  }, [profile?.role, loadResetRequests]);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editName, setEditName] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
@@ -163,6 +171,35 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
 
           </div>
         </div>
+
+        {/* Wachtwoordresetverzoeken (admin only) */}
+        {profile?.role === 'admin' && (
+          <button
+            onClick={() => onNavigate('reset_requests')}
+            className="w-full bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center justify-between hover:bg-slate-50 transition text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-lg">
+                🔑
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 text-sm">Wachtwoordresetverzoeken</h3>
+                <p className="text-xs text-slate-400">
+                  {pendingResetCount > 0
+                    ? `${pendingResetCount} openstaand`
+                    : 'Geen openstaande verzoeken'}
+                </p>
+              </div>
+            </div>
+            {pendingResetCount > 0 ? (
+              <span className="bg-amber-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                {pendingResetCount}
+              </span>
+            ) : (
+              <span className="text-slate-300">›</span>
+            )}
+          </button>
+        )}
 
         {/* Wachtwoord wijzigen */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">

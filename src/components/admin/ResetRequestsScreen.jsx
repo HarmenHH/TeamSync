@@ -42,19 +42,26 @@ export default function ResetRequestsScreen({ onNavigate }) {
         return;
       }
 
-      const authEmail = `${profile.username}@teamsync.app`;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        setError('Je sessie is verlopen. Log opnieuw in.');
+        return;
+      }
 
-      const { data: updateData, error: updateError } = await supabase.auth.admin.updateUserById(
-        profile.id,
-        { password: newPassword }
-      );
+      const response = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ requestId: activeRequest.id, newPassword }),
+      });
 
-      if (updateError) throw updateError;
-
-      await supabase
-        .from('password_reset_requests')
-        .update({ status: 'resolved', updated_at: new Date().toISOString() })
-        .eq('id', activeRequest.id);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || `Reset mislukt (${response.status})`);
+      }
 
       setSuccess(`Wachtwoord voor ${profile.display_name || profile.username} is gereset.`);
       setNewPassword('');

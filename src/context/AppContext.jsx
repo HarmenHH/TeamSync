@@ -21,6 +21,7 @@ export function AppProvider({ children }) {
   const [responses, setResponses] = useState([]);
   const [members, setMembers] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
+  const [resetRequests, setResetRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const weekKey = getMonday(new Date()).toISOString().slice(0, 10);
@@ -32,6 +33,7 @@ export function AppProvider({ children }) {
     setResponses([]);
     setMembers([]);
     setJoinRequests([]);
+    setResetRequests([]);
     if (user) {
       loadAllData();
     } else {
@@ -47,6 +49,7 @@ export function AppProvider({ children }) {
       loadResponses(),
       loadMembers(),
       loadJoinRequests(),
+      loadResetRequests(),
     ]);
     setLoading(false);
   }
@@ -103,6 +106,15 @@ export function AppProvider({ children }) {
     setJoinRequests(data || []);
   }
 
+  async function loadResetRequests() {
+    const { data, error } = await supabase
+      .from('password_reset_requests')
+      .select('id, user_id, username, status, created_at, updated_at, profiles!password_reset_requests_user_id_fkey(id, username, display_name)')
+      .order('created_at', { ascending: false });
+    if (error) console.error('loadResetRequests:', error.message);
+    setResetRequests(data || []);
+  }
+
   // === ACTIES ===
 
   async function addGroup(groupData) {
@@ -156,12 +168,16 @@ export function AppProvider({ children }) {
     if (updates.actionLabel !== undefined) dbUpdates.action_label = updates.actionLabel;
     if (updates.declineLabel !== undefined) dbUpdates.decline_label = updates.declineLabel;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('groups')
       .update(dbUpdates)
-      .eq('id', groupId);
+      .eq('id', groupId)
+      .select();
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Geen rechten om deze groep te wijzigen');
+    }
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...updates } : g));
   }
 
@@ -447,6 +463,8 @@ export function AppProvider({ children }) {
     getTodaysMoments,
     // Join requests
     joinRequests,
+    resetRequests,
+    loadResetRequests,
     approveJoinRequest,
     declineJoinRequest,
     isGroupAdmin,

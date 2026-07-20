@@ -25,14 +25,12 @@ export default function ForgotPasswordScreen({ onGoLogin }) {
 
     try {
       const { data: profile, error: lookupError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name')
-        .eq('username', clean)
-        .maybeSingle();
+        .rpc('lookup_profile_by_username', { p_username: clean });
 
       if (lookupError) throw lookupError;
+      const found = Array.isArray(profile) ? profile[0] : profile;
 
-      if (!profile) {
+      if (!found) {
         setError('Geen account gevonden met deze gebruikersnaam.');
         setLoading(false);
         return;
@@ -41,12 +39,22 @@ export default function ForgotPasswordScreen({ onGoLogin }) {
       const { error: insertError } = await supabase
         .from('password_reset_requests')
         .insert({
-          user_id: profile.id,
-          username: clean,
+          user_id: found.id,
+          username: found.username || clean,
           status: 'pending',
         });
 
       if (insertError) throw insertError;
+
+      try {
+        await fetch('/api/notify-reset-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: found.username || clean }),
+        });
+      } catch {
+        // push failure should not block the user's confirmation
+      }
 
       setSuccess(true);
     } catch (err) {
