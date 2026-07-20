@@ -59,13 +59,19 @@ export default function SettingsScreen({ group, onNavigate }) {
     setSaving(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteText !== group?.name) {
       showToast('Typ de groepsnaam exact over');
       return;
     }
-    deleteGroup(group.id);
-    onNavigate('groups');
+    try {
+      await deleteGroup(group.id);
+      onNavigate('groups');
+    } catch (err) {
+      showToast('Verwijderen mislukt: ' + err.message);
+      setConfirmDelete(false);
+      setDeleteText('');
+    }
   };
 
   return (

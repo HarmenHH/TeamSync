@@ -182,12 +182,16 @@ export function AppProvider({ children }) {
   }
 
   async function deleteGroup(groupId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('groups')
       .delete()
-      .eq('id', groupId);
+      .eq('id', groupId)
+      .select();
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Geen rechten om deze groep te verwijderen');
+    }
     setGroups(prev => prev.filter(g => g.id !== groupId));
     setMoments(prev => prev.filter(m => m.group_id !== groupId));
   }
@@ -308,13 +312,17 @@ export function AppProvider({ children }) {
   }
 
   async function removeMember(groupId, userId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('group_members')
       .delete()
       .eq('group_id', groupId)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select();
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Geen rechten om dit lid te verwijderen');
+    }
     setMembers(prev => prev.filter(m => !(m.group_id === groupId && m.user_id === userId)));
   }
 
@@ -331,22 +339,30 @@ export function AppProvider({ children }) {
   }
 
   async function updateMoment(momentId, updates) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('moments')
       .update(updates)
-      .eq('id', momentId);
+      .eq('id', momentId)
+      .select();
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Geen rechten om dit moment te wijzigen');
+    }
     setMoments(prev => prev.map(m => m.id === momentId ? { ...m, ...updates } : m));
   }
 
   async function deleteMoment(momentId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('moments')
       .delete()
-      .eq('id', momentId);
+      .eq('id', momentId)
+      .select();
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Geen rechten om dit moment te verwijderen');
+    }
     setMoments(prev => prev.filter(m => m.id !== momentId));
   }
 
