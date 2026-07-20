@@ -208,9 +208,9 @@ export function AppProvider({ children }) {
       .from('join_requests')
       .select('*')
       .eq('id', requestId)
-      .single();
+      .maybeSingle();
 
-    if (reqError) throw reqError;
+    if (reqError || !req) throw new Error('Verzoek niet gevonden');
 
     const { error: memberError } = await supabase
       .from('group_members')

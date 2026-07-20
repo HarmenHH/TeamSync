@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 
 export default function GroupList({ onNavigate, onShowPrivacy }) {
-  const { user, profile, logout, isAdmin } = useAuth();
+  const { user, profile, logout } = useAuth();
   const { groups, joinGroupByCode, showToast, isGroupAdmin, joinRequests } = useApp();
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
