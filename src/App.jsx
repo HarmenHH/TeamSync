@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { AppProvider, useApp } from './context/AppContext.jsx';
 import Toast from './components/ui/Toast.jsx';
@@ -24,6 +24,10 @@ function AppContent() {
   const [authScreen, setAuthScreen] = useState('login');
   const [activeGroup, setActiveGroup] = useState(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
+
+  useEffect(() => {
+    if (user) setScreen('groups');
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -63,9 +67,9 @@ function AppContent() {
   }
 
   // Ingelogd: toon app schermen
-  const navigate = (newScreen, group = null) => {
+  const navigate = (newScreen, group = undefined) => {
     setScreen(newScreen);
-    if (group !== null) setActiveGroup(group);
+    if (group !== undefined) setActiveGroup(group);
   };
 
   return (
@@ -100,6 +104,7 @@ function AppContent() {
       )}
       {screen === 'admin_dashboard' && (
         <AdminDashboard
+          key={activeGroup?.id || 'new'}
           group={activeGroup}
           onNavigate={navigate}
         />
@@ -118,6 +123,7 @@ function AppContent() {
       )}
       {screen === 'settings' && (
         <SettingsScreen
+          key={activeGroup?.id || 'new'}
           group={activeGroup}
           onNavigate={navigate}
         />
