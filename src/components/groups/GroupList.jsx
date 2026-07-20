@@ -78,7 +78,7 @@ export default function GroupList({ onNavigate, onShowPrivacy }) {
                 👋
               </div>
               <h2 className="text-xl font-bold text-slate-800 mb-2">
-                Welkom, {profile?.display_name || 'daar'}!
+                Welkom!
               </h2>
               <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">
                 Je bent nog niet aangesloten bij een groep. Kies hieronder hoe je wilt beginnen.
