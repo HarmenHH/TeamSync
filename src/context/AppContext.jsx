@@ -158,6 +158,54 @@ export function AppProvider({ children }) {
     setMembers(prev => [...prev, data]);
   }
 
+  async function regenerateInviteCode(groupId) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+
+    const { data, error } = await supabase
+      .from('groups')
+      .update({
+        invite_code: code,
+        invite_code_updated_at: new Date().toISOString(),
+      })
+      .eq('id', groupId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, invite_code: code, invite_code_updated_at: data.invite_code_updated_at } : g));
+    return code;
+  }
+
+  async function joinGroupByCode(code) {
+    const { data: groupData, error: verifyError } = await supabase
+      .rpc('verify_invite_code', { input_code: code.trim().toUpperCase() });
+
+    if (verifyError) throw verifyError;
+    if (!groupData || groupData.length === 0) {
+      throw new Error('Ongeldige uitnodigingscode');
+    }
+
+    const group = groupData[0];
+
+    const { error: joinError } = await supabase
+      .from('group_members')
+      .insert({ group_id: group.id, user_id: user.id });
+
+    if (joinError) {
+      if (joinError.code === '23505') {
+        throw new Error('Je bent al lid van deze groep');
+      }
+      throw joinError;
+    }
+
+    await loadMembers();
+    return group;
+  }
+
   async function removeMember(groupId, userId) {
     const { error } = await supabase
       .from('group_members')
@@ -284,6 +332,8 @@ export function AppProvider({ children }) {
     deleteGroup,
     addMember,
     removeMember,
+    regenerateInviteCode,
+    joinGroupByCode,
     addMoment,
     updateMoment,
     deleteMoment,

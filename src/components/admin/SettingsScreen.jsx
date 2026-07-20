@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function SettingsScreen({ group, onNavigate }) {
-  const { groups, setGroups, deleteGroup, showToast } = useApp();
+  const { groups, setGroups, deleteGroup, regenerateInviteCode, showToast } = useApp();
+  const { user } = useAuth();
 
   const [name, setName] = useState(group?.name || '');
   const [emoji, setEmoji] = useState(group?.emoji || '📋');
@@ -10,6 +12,30 @@ export default function SettingsScreen({ group, onNavigate }) {
   const [declineLabel, setDeclineLabel] = useState(group?.declineLabel || 'Niet vanavond');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteText, setDeleteText] = useState('');
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleGenerateCode = async () => {
+    setGeneratingCode(true);
+    try {
+      await regenerateInviteCode(group.id);
+      showToast('Uitnodigingscode gegenereerd');
+    } catch (err) {
+      showToast('Code genereren mislukt');
+    }
+    setGeneratingCode(false);
+  };
+
+  const handleCopyCode = async () => {
+    if (!group?.invite_code) return;
+    try {
+      await navigator.clipboard.writeText(group.invite_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      showToast('Kopiëren niet ondersteund');
+    }
+  };
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -170,6 +196,42 @@ export default function SettingsScreen({ group, onNavigate }) {
             </div>
           </div>
         )}
+
+        {/* Uitnodigingscode */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
+          <h3 className="font-semibold text-slate-800">Uitnodigingscode</h3>
+          <p className="text-xs text-slate-400">
+            Deel deze code met leden zodat ze zelf kunnen deelnemen aan de groep.
+          </p>
+
+          {group?.invite_code ? (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                <span className="text-2xl font-bold tracking-[0.3em] text-slate-800">
+                  {group.invite_code}
+                </span>
+              </div>
+              <button
+                onClick={handleCopyCode}
+                className="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition text-sm font-medium"
+              >
+                {copied ? '✓' : 'Kopieer'}
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 text-center py-3">
+              Nog geen code gegenereerd.
+            </p>
+          )}
+
+          <button
+            onClick={handleGenerateCode}
+            disabled={generatingCode}
+            className="w-full py-2.5 bg-sky-50 text-sky-700 text-sm font-medium rounded-xl border border-sky-200 hover:bg-sky-100 transition disabled:opacity-50"
+          >
+            {generatingCode ? 'Genereren...' : group?.invite_code ? 'Nieuwe code genereren' : 'Code genereren'}
+          </button>
+        </div>
 
         {/* Opslaan knop */}
         <button
