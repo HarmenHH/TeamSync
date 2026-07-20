@@ -25,19 +25,19 @@ export function AppProvider({ children }) {
 
   const weekKey = getMonday(new Date()).toISOString().slice(0, 10);
 
-  // Laad data wanneer user inlogt
+  // Laad data wanneer user inlogt; wis alles bij logout of user-wissel
   useEffect(() => {
+    setGroups([]);
+    setMoments([]);
+    setResponses([]);
+    setMembers([]);
+    setJoinRequests([]);
     if (user) {
       loadAllData();
     } else {
-      setGroups([]);
-      setMoments([]);
-      setResponses([]);
-      setMembers([]);
-      setJoinRequests([]);
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   async function loadAllData() {
     setLoading(true);
