@@ -10,12 +10,14 @@ export default function SamenDetail({ group, onNavigate }) {
     getMyResponse,
     getMomentResponses,
     setResponse,
-    isGroupAdmin
+    isGroupAdmin,
+    members
   } = useApp();
 
   const groupMoments = getGroupMoments(group?.id);
   const groupMembers = getGroupMembers(group?.id);
   const canManage = isGroupAdmin(group?.id);
+  const isMember = members.some(m => m.group_id === group?.id && m.user_id === user?.id);
 
   const getStatusColor = (status) => {
     if (status === 'aanwezig') return 'bg-green-100 text-green-700 border-green-200';
@@ -96,8 +98,8 @@ export default function SamenDetail({ group, onNavigate }) {
                   </p>
                 )}
 
-                {/* Actieknoppen (alleen als niet afgelast) */}
-                {!isCancelled && (
+                {/* Actieknoppen (alleen als niet afgelast en je lid bent) */}
+                {!isCancelled && isMember && (
                   <div className="flex gap-2 mb-4">
                     <button
                       onClick={() => setResponse(moment.id, 'aanwezig')}

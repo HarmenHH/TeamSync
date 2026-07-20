@@ -20,13 +20,15 @@ export function AuthProvider({ children }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         // Skip tijdens registratie
         if (isRegistering.current) return;
 
         if (session?.user) {
           setUser(session.user);
-          await fetchProfile(session.user.id);
+          (async () => {
+            await fetchProfile(session.user.id);
+          })();
         } else {
           setUser(null);
           setProfile(null);
@@ -38,12 +40,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function fetchProfile(userId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
+    if (error) {
+      console.error('Profiel ophalen mislukt:', error.message);
+    }
     if (data) {
       setProfile(data);
     }

@@ -52,10 +52,12 @@ export function AppProvider({ children }) {
   }
 
   async function loadGroups() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('groups')
       .select('*')
       .order('created_at');
+
+    if (error) console.error('loadGroups:', error.message);
 
     // Map snake_case naar camelCase
     const mapped = (data || []).map(g => ({
@@ -68,32 +70,36 @@ export function AppProvider({ children }) {
   }
 
   async function loadMoments() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('moments')
       .select('*, groups(name, emoji)')
       .order('time');
+    if (error) console.error('loadMoments:', error.message);
     setMoments(data || []);
   }
 
   async function loadResponses() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('moment_responses')
       .select('*')
       .eq('week_key', weekKey);
+    if (error) console.error('loadResponses:', error.message);
     setResponses(data || []);
   }
 
   async function loadMembers() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('group_members')
       .select('*, profiles(id, username, display_name, role)');
+    if (error) console.error('loadMembers:', error.message);
     setMembers(data || []);
   }
 
   async function loadJoinRequests() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('join_requests')
       .select('*, profiles(id, username, display_name)');
+    if (error) console.error('loadJoinRequests:', error.message);
     setJoinRequests(data || []);
   }
 
