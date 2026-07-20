@@ -198,6 +198,22 @@ export default function AdminDashboard({ group, onNavigate }) {
           </button>
 
           <button
+            onClick={() => onNavigate('reset_requests')}
+            className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between hover:bg-slate-50 transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-lg">
+                🔑
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-slate-800 text-sm">Reset verzoeken</p>
+                <p className="text-xs text-slate-400">Wachtwoord reset aanvragen</p>
+              </div>
+            </div>
+            <span className="text-slate-300">›</span>
+          </button>
+
+          <button
             onClick={() => onNavigate('settings', group)}
             className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between hover:bg-slate-50 transition"
           >

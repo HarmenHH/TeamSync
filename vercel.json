@@ -3,6 +3,10 @@
     {
       "path": "/api/keep-alive",
       "schedule": "0 8 */3 * *"
+    },
+    {
+      "path": "/api/send-notifications",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

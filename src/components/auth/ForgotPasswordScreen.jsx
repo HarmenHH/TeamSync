@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../../lib/supabase.js';
 
 export default function ForgotPasswordScreen({ onGoLogin }) {
   const [username, setUsername] = useState('');
@@ -10,22 +11,47 @@ export default function ForgotPasswordScreen({ onGoLogin }) {
     e.preventDefault();
     setError('');
 
-    if (!username.trim()) {
+    const clean = username.trim().toLowerCase();
+    if (!clean) {
       setError('Vul je gebruikersnaam in.');
       return;
     }
-
-    if (!username.includes('.')) {
+    if (!clean.includes('.')) {
       setError('Gebruikersnaam moet in het formaat voornaam.achternaam zijn.');
       return;
     }
 
     setLoading(true);
 
-    // Mock: later wordt dit een insert in password_reset_requests tabel
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      const { data: profile, error: lookupError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .eq('username', clean)
+        .maybeSingle();
 
-    setSuccess(true);
+      if (lookupError) throw lookupError;
+
+      if (!profile) {
+        setError('Geen account gevonden met deze gebruikersnaam.');
+        setLoading(false);
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from('password_reset_requests')
+        .insert({
+          user_id: profile.id,
+          username: clean,
+          status: 'pending',
+        });
+
+      if (insertError) throw insertError;
+
+      setSuccess(true);
+    } catch (err) {
+      setError('Er ging iets mis. Probeer het later opnieuw.');
+    }
     setLoading(false);
   };
 

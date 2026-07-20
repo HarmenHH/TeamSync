@@ -14,6 +14,7 @@ import AdminDashboard from './components/admin/AdminDashboard.jsx';
 import MembersScreen from './components/admin/MembersScreen.jsx';
 import ScheduleScreen from './components/admin/ScheduleScreen.jsx';
 import SettingsScreen from './components/admin/SettingsScreen.jsx';
+import ResetRequestsScreen from './components/admin/ResetRequestsScreen.jsx';
 import AccountScreen from './components/account/AccountScreen.jsx';
 
 function AppContent() {
@@ -118,6 +119,11 @@ function AppContent() {
       {screen === 'settings' && (
         <SettingsScreen
           group={activeGroup}
+          onNavigate={navigate}
+        />
+      )}
+      {screen === 'reset_requests' && (
+        <ResetRequestsScreen
           onNavigate={navigate}
         />
       )}

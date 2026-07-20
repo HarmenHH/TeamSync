@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useApp } from '../../context/AppContext.jsx';
+import {
+  isPushSupported,
+  getPermissionStatus,
+  subscribeToPush,
+  unsubscribeFromPush,
+  isSubscribed,
+} from '../../utils/pushNotifications.js';
 
 export default function AccountScreen({ onNavigate, onShowPrivacy }) {
   const { user, profile, logout, changePassword } = useAuth();
@@ -11,6 +18,9 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushSupported, setPushSupported] = useState(true);
+  const [pushLoading, setPushLoading] = useState(false);
 
   const handleChangePassword = async () => {
     setError('');
@@ -46,6 +56,37 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
 
   const handleLogout = () => {
     logout();
+  };
+
+  useEffect(() => {
+    const supported = isPushSupported();
+    setPushSupported(supported);
+    if (supported && user) {
+      isSubscribed().then(setPushEnabled);
+    }
+  }, [user]);
+
+  const handleTogglePush = async () => {
+    if (!user) return;
+    setPushLoading(true);
+    if (!pushEnabled) {
+      const result = await subscribeToPush(user.id);
+      if (result.error) {
+        showToast(result.error);
+      } else {
+        setPushEnabled(true);
+        showToast('Notificaties ingeschakeld');
+      }
+    } else {
+      const result = await unsubscribeFromPush(user.id);
+      if (result.error) {
+        showToast(result.error);
+      } else {
+        setPushEnabled(false);
+        showToast('Notificaties uitgeschakeld');
+      }
+    }
+    setPushLoading(false);
   };
 
   return (
@@ -189,6 +230,32 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
             </div>
           )}
         </div>
+
+        {/* Push notificaties */}
+        {pushSupported && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-base">🔔</span>
+                <div>
+                  <h3 className="font-semibold text-slate-800 text-sm">Push notificaties</h3>
+                  <p className="text-xs text-slate-400">Herinnering voor momenten</p>
+                </div>
+              </div>
+              <button
+                onClick={handleTogglePush}
+                disabled={pushLoading}
+                className={`relative w-12 h-7 rounded-full transition ${
+                  pushEnabled ? 'bg-sky-600' : 'bg-slate-200'
+                } disabled:opacity-50`}
+              >
+                <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
+                  pushEnabled ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Extra opties */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
