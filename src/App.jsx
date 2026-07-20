@@ -25,10 +25,6 @@ function AppContent() {
   const [activeGroup, setActiveGroup] = useState(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
-  useEffect(() => {
-    if (user) setScreen('groups');
-  }, [user?.id]);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -37,8 +33,10 @@ function AppContent() {
     );
   }
 
-  // Niet ingelogd: toon auth schermen
+  // Niet ingelogd: reset navigatie en toon auth schermen
   if (!user) {
+    if (screen !== 'groups') setScreen('groups');
+    if (activeGroup !== null) setActiveGroup(null);
     return (
       <>
         <Toast message={toast} onClose={() => showToast(null)} />
