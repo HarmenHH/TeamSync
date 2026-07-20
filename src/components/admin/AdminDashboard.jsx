@@ -57,7 +57,7 @@ export default function AdminDashboard({ group, onNavigate }) {
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Bijv. Hockey fietsen"
+                placeholder="Bijv. Team Rooster"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
               />
             </div>
