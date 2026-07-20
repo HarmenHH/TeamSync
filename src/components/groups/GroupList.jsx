@@ -68,93 +68,149 @@ export default function GroupList({ onNavigate, onShowPrivacy }) {
         </div>
       </div>
 
-      {/* Groepen lijst */}
+      {/* Groepen lijst of keuzescherm */}
       <div className="px-6 py-6 max-w-lg mx-auto">
-        <div className="space-y-3">
-          {groups.map((group) => (
-            <div
-              key={group.id}
-              onClick={() => handleGroupClick(group)}
-              className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:bg-slate-50 transition cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-sky-50 rounded-xl flex items-center justify-center text-2xl">
-                    {group.emoji || '📋'}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800">{group.name}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {group.type === 'samen' ? 'Activiteit' : 'Weekrooster'}
-                    </p>
-                  </div>
-                </div>
+        {groups.length === 0 ? (
+          /* Welkomstscherm voor nieuwe gebruikers zonder groepen */
+          <div className="mt-8">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-sky-50 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4">
+                👋
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">
+                Welkom, {profile?.display_name || 'daar'}!
+              </h2>
+              <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">
+                Je bent nog niet aangesloten bij een groep. Kies hieronder hoe je wilt beginnen.
+              </p>
+            </div>
 
-                <div className="flex items-center gap-2">
-                  {isGroupAdmin(group.id) && (
-                    <button
-                      onClick={(e) => handleAdminClick(e, group)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition"
-                    >
-                      <span className="text-base">⚙️</span>
-                    </button>
-                  )}
-                  <span className="text-slate-300 text-lg">›</span>
+            {/* Keuze: lid worden met code */}
+            <button
+              onClick={() => setShowJoinModal(true)}
+              className="w-full bg-white rounded-2xl p-5 shadow-sm border-2 border-sky-100 hover:border-sky-400 hover:shadow-md transition text-left mb-3"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-sky-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+                  🔑
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">Lid worden met code</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Heb je een uitnodigingscode? Voer hem in om je aan te sluiten.
+                  </p>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            </button>
 
-        {/* Openstaande verzoeken */}
-        {myPendingRequests.length > 0 && (
-          <div className="mt-6 bg-amber-50 rounded-2xl p-4 border border-amber-200">
-            <h3 className="font-semibold text-amber-800 text-sm mb-2">
-              Openstaande verzoeken
-            </h3>
-            <div className="space-y-2">
-              {myPendingRequests.map((req) => (
-                <div key={req.id} className="flex items-center gap-2 text-sm text-amber-700">
-                  <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
-                  <span>Verzoek in afwachting</span>
+            {/* Keuze: nieuwe groep aanmaken */}
+            <button
+              onClick={() => onNavigate('admin_dashboard', null)}
+              className="w-full bg-white rounded-2xl p-5 shadow-sm border-2 border-slate-100 hover:border-sky-300 hover:shadow-md transition text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+                  ✨
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">Nieuwe groep maken</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Start een eigen groep en nodig anderen uit met een code.
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+        ) : (
+          /* Bestaande groepen lijst */
+          <>
+            <div className="space-y-3">
+              {groups.map((group) => (
+                <div
+                  key={group.id}
+                  onClick={() => handleGroupClick(group)}
+                  className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:bg-slate-50 transition cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-sky-50 rounded-xl flex items-center justify-center text-2xl">
+                        {group.emoji || '📋'}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-800">{group.name}</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {group.type === 'samen' ? 'Activiteit' : 'Weekrooster'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isGroupAdmin(group.id) && (
+                        <button
+                          onClick={(e) => handleAdminClick(e, group)}
+                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition"
+                        >
+                          <span className="text-base">⚙️</span>
+                        </button>
+                      )}
+                      <span className="text-slate-300 text-lg">›</span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-amber-600 mt-2">
-              De groepsadmin keurt je verzoek goed.
-            </p>
-          </div>
+
+            {/* Openstaande verzoeken */}
+            {myPendingRequests.length > 0 && (
+              <div className="mt-6 bg-amber-50 rounded-2xl p-4 border border-amber-200">
+                <h3 className="font-semibold text-amber-800 text-sm mb-2">
+                  Openstaande verzoeken
+                </h3>
+                <div className="space-y-2">
+                  {myPendingRequests.map((req) => (
+                    <div key={req.id} className="flex items-center gap-2 text-sm text-amber-700">
+                      <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+                      <span>Verzoek in afwachting</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-amber-600 mt-2">
+                  De groepsadmin keurt je verzoek goed.
+                </p>
+              </div>
+            )}
+
+            {/* Afgekeurde verzoeken */}
+            {myDeclinedRequests.length > 0 && (
+              <div className="mt-3 bg-red-50 rounded-2xl p-4 border border-red-200">
+                <h3 className="font-semibold text-red-800 text-sm mb-2">
+                  Afgekeurd
+                </h3>
+                {myDeclinedRequests.map((req) => (
+                  <p key={req.id} className="text-sm text-red-700">
+                    Je verzoek is afgekeurd door de admin.
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Lid worden knop */}
+            <button
+              onClick={() => setShowJoinModal(true)}
+              className="w-full mt-4 py-3 border-2 border-dashed border-sky-200 rounded-2xl text-sky-500 text-sm font-medium hover:border-sky-400 hover:text-sky-600 transition"
+            >
+              + Lid worden met code
+            </button>
+
+            {/* Nieuwe groep knop (alle gebruikers) */}
+            <button
+              onClick={() => onNavigate('admin_dashboard', null)}
+              className="w-full mt-3 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-medium hover:border-sky-300 hover:text-sky-500 transition"
+            >
+              + Nieuwe groep
+            </button>
+          </>
         )}
-
-        {/* Afgekeurde verzoeken */}
-        {myDeclinedRequests.length > 0 && (
-          <div className="mt-3 bg-red-50 rounded-2xl p-4 border border-red-200">
-            <h3 className="font-semibold text-red-800 text-sm mb-2">
-              Afgekeurd
-            </h3>
-            {myDeclinedRequests.map((req) => (
-              <p key={req.id} className="text-sm text-red-700">
-                Je verzoek is afgekeurd door de admin.
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Lid worden knop */}
-        <button
-          onClick={() => setShowJoinModal(true)}
-          className="w-full mt-4 py-3 border-2 border-dashed border-sky-200 rounded-2xl text-sky-500 text-sm font-medium hover:border-sky-400 hover:text-sky-600 transition"
-        >
-          + Lid worden met code
-        </button>
-
-        {/* Nieuwe groep knop (alle gebruikers) */}
-        <button
-          onClick={() => onNavigate('admin_dashboard', null)}
-          className="w-full mt-3 py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-medium hover:border-sky-300 hover:text-sky-500 transition"
-        >
-          + Nieuwe groep
-        </button>
 
         {/* Uitlog + privacy */}
         <div className="mt-10 flex items-center justify-between">
