@@ -1,24 +1,34 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function AdminDashboard({ group, onNavigate }) {
-  const { members, moments, addGroup } = useApp();
+  const { members, moments, addGroup, getPendingGroupJoinRequests, approveJoinRequest, declineJoinRequest } = useApp();
+  const { isAdmin } = useAuth();
   const [showNewGroup, setShowNewGroup] = useState(!group);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('samen');
   const [newEmoji, setNewEmoji] = useState('📋');
+  const [creating, setCreating] = useState(false);
+  const [reviewing, setReviewing] = useState(null);
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!newName.trim()) return;
-    const created = addGroup({
-      name: newName.trim(),
-      type: newType,
-      emoji: newEmoji,
-      joinMode: 'admin',
-      actionLabel: 'Doe mee',
-      declineLabel: 'Niet vanavond',
-    });
-    onNavigate('groups');
+    setCreating(true);
+    try {
+      await addGroup({
+        name: newName.trim(),
+        type: newType,
+        emoji: newEmoji,
+        joinMode: 'admin',
+        actionLabel: 'Doe mee',
+        declineLabel: 'Niet vanavond',
+      });
+      onNavigate('groups');
+    } catch (err) {
+      alert('Groep aanmaken mislukt: ' + err.message);
+    }
+    setCreating(false);
   };
 
   // Nieuwe groep formulier
@@ -103,10 +113,10 @@ export default function AdminDashboard({ group, onNavigate }) {
 
             <button
               onClick={handleCreateGroup}
-              disabled={!newName.trim()}
+              disabled={!newName.trim() || creating}
               className="w-full py-3 bg-sky-600 text-white font-semibold rounded-xl hover:bg-sky-700 active:bg-sky-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Groep aanmaken
+              {creating ? 'Aanmaken...' : 'Groep aanmaken'}
             </button>
           </div>
         </div>
@@ -115,6 +125,28 @@ export default function AdminDashboard({ group, onNavigate }) {
   }
 
   // Bestaande groep beheren
+  const pendingRequests = group ? getPendingGroupJoinRequests(group.id) : [];
+
+  const handleApprove = async (reqId) => {
+    setReviewing(reqId);
+    try {
+      await approveJoinRequest(reqId);
+    } catch (err) {
+      alert('Goedkeuren mislukt: ' + err.message);
+    }
+    setReviewing(null);
+  };
+
+  const handleDecline = async (reqId) => {
+    setReviewing(reqId);
+    try {
+      await declineJoinRequest(reqId);
+    } catch (err) {
+      alert('Afwijzen mislukt: ' + err.message);
+    }
+    setReviewing(null);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -162,6 +194,50 @@ export default function AdminDashboard({ group, onNavigate }) {
         </div>
       </div>
 
+      {/* Pending join requests */}
+      {pendingRequests.length > 0 && (
+        <div className="px-6 max-w-lg mx-auto mt-4">
+          <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
+            <h3 className="font-semibold text-amber-800 text-sm mb-3">
+              Toetredingsverzoeken ({pendingRequests.length})
+            </h3>
+            <div className="space-y-2">
+              {pendingRequests.map((req) => (
+                <div key={req.id} className="flex items-center justify-between bg-white rounded-xl p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-xs font-bold text-amber-700">
+                      {req.profiles?.display_name?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">
+                        {req.profiles?.display_name || 'Onbekend'}
+                      </p>
+                      <p className="text-xs text-slate-400">@{req.profiles?.username || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(req.id)}
+                      disabled={reviewing === req.id}
+                      className="px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded-lg hover:bg-green-600 transition disabled:opacity-50"
+                    >
+                      Goedkeuren
+                    </button>
+                    <button
+                      onClick={() => handleDecline(req.id)}
+                      disabled={reviewing === req.id}
+                      className="px-3 py-1.5 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition disabled:opacity-50"
+                    >
+                      Afwijzen
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Menu items */}
       <div className="px-6 max-w-lg mx-auto">
         <div className="space-y-3">
@@ -197,21 +273,23 @@ export default function AdminDashboard({ group, onNavigate }) {
             <span className="text-slate-300">›</span>
           </button>
 
-          <button
-            onClick={() => onNavigate('reset_requests')}
-            className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between hover:bg-slate-50 transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-lg">
-                🔑
+          {isAdmin && (
+            <button
+              onClick={() => onNavigate('reset_requests')}
+              className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between hover:bg-slate-50 transition"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-lg">
+                  🔑
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-slate-800 text-sm">Reset verzoeken</p>
+                  <p className="text-xs text-slate-400">Wachtwoord reset aanvragen</p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="font-semibold text-slate-800 text-sm">Reset verzoeken</p>
-                <p className="text-xs text-slate-400">Wachtwoord reset aanvragen</p>
-              </div>
-            </div>
-            <span className="text-slate-300">›</span>
-          </button>
+              <span className="text-slate-300">›</span>
+            </button>
+          )}
 
           <button
             onClick={() => onNavigate('settings', group)}

@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function SettingsScreen({ group, onNavigate }) {
-  const { groups, setGroups, deleteGroup, regenerateInviteCode, showToast } = useApp();
+  const { updateGroup, deleteGroup, regenerateInviteCode, showToast } = useApp();
   const { user } = useAuth();
 
   const [name, setName] = useState(group?.name || '');
@@ -37,17 +37,26 @@ export default function SettingsScreen({ group, onNavigate }) {
     }
   };
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
     if (!name.trim()) {
       showToast('Groepsnaam mag niet leeg zijn');
       return;
     }
-    setGroups(prev => prev.map(g =>
-      g.id === group?.id
-        ? { ...g, name: name.trim(), emoji, actionLabel: actionLabel.trim(), declineLabel: declineLabel.trim() }
-        : g
-    ));
-    showToast('Instellingen opgeslagen');
+    setSaving(true);
+    try {
+      await updateGroup(group.id, {
+        name: name.trim(),
+        emoji,
+        action_label: actionLabel.trim(),
+        decline_label: declineLabel.trim(),
+      });
+      showToast('Instellingen opgeslagen');
+    } catch (err) {
+      showToast('Opslaan mislukt: ' + err.message);
+    }
+    setSaving(false);
   };
 
   const handleDelete = () => {
@@ -236,9 +245,10 @@ export default function SettingsScreen({ group, onNavigate }) {
         {/* Opslaan knop */}
         <button
           onClick={handleSave}
-          className="w-full py-3 bg-sky-600 text-white font-semibold rounded-xl hover:bg-sky-700 active:bg-sky-800 transition"
+          disabled={saving}
+          className="w-full py-3 bg-sky-600 text-white font-semibold rounded-xl hover:bg-sky-700 active:bg-sky-800 transition disabled:opacity-50"
         >
-          Instellingen opslaan
+          {saving ? 'Opslaan...' : 'Instellingen opslaan'}
         </button>
 
         {/* Danger zone */}

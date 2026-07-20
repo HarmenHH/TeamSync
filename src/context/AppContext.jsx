@@ -20,6 +20,7 @@ export function AppProvider({ children }) {
   const [moments, setMoments] = useState([]);
   const [responses, setResponses] = useState([]);
   const [members, setMembers] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const weekKey = getMonday(new Date()).toISOString().slice(0, 10);
@@ -33,6 +34,7 @@ export function AppProvider({ children }) {
       setMoments([]);
       setResponses([]);
       setMembers([]);
+      setJoinRequests([]);
       setLoading(false);
     }
   }, [user]);
@@ -44,6 +46,7 @@ export function AppProvider({ children }) {
       loadMoments(),
       loadResponses(),
       loadMembers(),
+      loadJoinRequests(),
     ]);
     setLoading(false);
   }
@@ -87,6 +90,13 @@ export function AppProvider({ children }) {
     setMembers(data || []);
   }
 
+  async function loadJoinRequests() {
+    const { data } = await supabase
+      .from('join_requests')
+      .select('*, profiles(id, username, display_name)');
+    setJoinRequests(data || []);
+  }
+
   // === ACTIES ===
 
   async function addGroup(groupData) {
@@ -126,6 +136,7 @@ export function AppProvider({ children }) {
       setMembers(prev => [...prev, memberData]);
     }
 
+    await loadJoinRequests();
     return mapped;
   }
 
@@ -190,6 +201,69 @@ export function AppProvider({ children }) {
     if (error) throw error;
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, invite_code: code, invite_code_updated_at: data.invite_code_updated_at } : g));
     return code;
+  }
+
+  async function requestJoinGroup(groupId) {
+    const { data, error } = await supabase
+      .from('join_requests')
+      .insert({ group_id: groupId, user_id: user.id })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('Je hebt al een verzoek ingediend voor deze groep');
+      }
+      throw error;
+    }
+
+    setJoinRequests(prev => [...prev, data]);
+    return data;
+  }
+
+  async function approveJoinRequest(requestId) {
+    const { data: req, error: reqError } = await supabase
+      .from('join_requests')
+      .select('*')
+      .eq('id', requestId)
+      .single();
+
+    if (reqError) throw reqError;
+
+    const { error: memberError } = await supabase
+      .from('group_members')
+      .insert({ group_id: req.group_id, user_id: req.user_id });
+
+    if (memberError) {
+      if (memberError.code !== '23505') throw memberError;
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('join_requests')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    setJoinRequests(prev => prev.map(r => r.id === requestId ? updated : r));
+    await loadMembers();
+    return updated;
+  }
+
+  async function declineJoinRequest(requestId) {
+    const { data: updated, error } = await supabase
+      .from('join_requests')
+      .update({ status: 'declined', reviewed_at: new Date().toISOString() })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    setJoinRequests(prev => prev.map(r => r.id === requestId ? updated : r));
+    return updated;
   }
 
   async function joinGroupByCode(code) {
@@ -301,6 +375,20 @@ export function AppProvider({ children }) {
     return groups.filter(g => myGroupIds.includes(g.id));
   }
 
+  function isGroupAdmin(groupId) {
+    return members.some(
+      m => m.group_id === groupId && m.user_id === user?.id && m.role === 'admin'
+    );
+  }
+
+  function getGroupJoinRequests(groupId) {
+    return joinRequests.filter(r => r.group_id === groupId);
+  }
+
+  function getPendingGroupJoinRequests(groupId) {
+    return joinRequests.filter(r => r.group_id === groupId && r.status === 'pending');
+  }
+
   function getGroupMembers(groupId) {
     return members
       .filter(m => m.group_id === groupId)
@@ -358,6 +446,14 @@ export function AppProvider({ children }) {
     getMomentResponses,
     getMyResponse,
     getTodaysMoments,
+    // Join requests
+    joinRequests,
+    requestJoinGroup,
+    approveJoinRequest,
+    declineJoinRequest,
+    isGroupAdmin,
+    getGroupJoinRequests,
+    getPendingGroupJoinRequests,
   };
 
   return (
