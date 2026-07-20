@@ -203,24 +203,6 @@ export function AppProvider({ children }) {
     return code;
   }
 
-  async function requestJoinGroup(groupId) {
-    const { data, error } = await supabase
-      .from('join_requests')
-      .insert({ group_id: groupId, user_id: user.id })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        throw new Error('Je hebt al een verzoek ingediend voor deze groep');
-      }
-      throw error;
-    }
-
-    setJoinRequests(prev => [...prev, data]);
-    return data;
-  }
-
   async function approveJoinRequest(requestId) {
     const { data: req, error: reqError } = await supabase
       .from('join_requests')
@@ -277,18 +259,29 @@ export function AppProvider({ children }) {
 
     const group = groupData[0];
 
-    const { error: joinError } = await supabase
-      .from('group_members')
-      .insert({ group_id: group.id, user_id: user.id });
-
-    if (joinError) {
-      if (joinError.code === '23505') {
-        throw new Error('Je bent al lid van deze groep');
-      }
-      throw joinError;
+    // Controleer of gebruiker al lid is
+    const alreadyMember = members.some(
+      m => m.group_id === group.id && m.user_id === user.id
+    );
+    if (alreadyMember) {
+      throw new Error('Je bent al lid van deze groep');
     }
 
-    await loadMembers();
+    // Maak een toetredingsverzoek aan (geen direct lid)
+    const { data: reqData, error: reqError } = await supabase
+      .from('join_requests')
+      .insert({ group_id: group.id, user_id: user.id })
+      .select()
+      .single();
+
+    if (reqError) {
+      if (reqError.code === '23505') {
+        throw new Error('Je hebt al een verzoek ingediend voor deze groep');
+      }
+      throw reqError;
+    }
+
+    setJoinRequests(prev => [...prev, reqData]);
     return group;
   }
 
@@ -448,7 +441,6 @@ export function AppProvider({ children }) {
     getTodaysMoments,
     // Join requests
     joinRequests,
-    requestJoinGroup,
     approveJoinRequest,
     declineJoinRequest,
     isGroupAdmin,

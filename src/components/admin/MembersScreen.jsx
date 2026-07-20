@@ -28,13 +28,10 @@ export default function MembersScreen({ group, onNavigate }) {
     setSearchResults([]);
 
     const { data, error } = await supabase
-      .from('profiles')
-      .select('id, username, display_name, role')
-      .ilike('username', `%${searchQuery.trim()}%`)
-      .limit(10);
+      .rpc('search_profiles', { query: searchQuery.trim(), admin_user_id: user.id });
 
     if (error) {
-      showToast('Zoeken mislukt');
+      showToast('Zoeken mislukt: ' + error.message);
     } else {
       // Filter out users die al lid zijn
       const existingIds = groupMembers.map(m => m.user_id);

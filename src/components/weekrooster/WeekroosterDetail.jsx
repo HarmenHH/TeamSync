@@ -4,11 +4,12 @@ import { useApp } from '../../context/AppContext.jsx';
 import { getMonday, formatWeekLabel, DAY_LABELS_SHORT } from '../../utils/dates.js';
 
 export default function WeekroosterDetail({ group, onNavigate }) {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const {
     members, presence, togglePresence, fillWholeWeek,
     copyPreviousWeek, clearWeek, undo, undoStack,
-    getOchtend, getMiddag, getNote, hasPreviousWeekData, showToast
+    getOchtend, getMiddag, getNote, hasPreviousWeekData, showToast,
+    isGroupAdmin
   } = useApp();
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -49,9 +50,11 @@ export default function WeekroosterDetail({ group, onNavigate }) {
     });
   }, [members, weekKey, getOchtend, getMiddag]);
 
+  const canManage = isGroupAdmin(group?.id);
+
   const handleToggle = (memberShort, dayIndex, period) => {
-    // Alleen eigen rij bewerken (tenzij admin)
-    if (memberShort !== myName && !isAdmin) {
+    // Alleen eigen rij bewerken (tenzij groepsadmin)
+    if (memberShort !== myName && !canManage) {
       showToast('Je kunt alleen je eigen rij bewerken');
       return;
     }
@@ -78,7 +81,7 @@ export default function WeekroosterDetail({ group, onNavigate }) {
             >
               ← Terug
             </button>
-            {isAdmin && (
+            {canManage && (
               <button
                 onClick={() => onNavigate('admin_dashboard', group)}
                 className="text-sm text-slate-500 hover:text-slate-700"

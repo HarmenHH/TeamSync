@@ -3,17 +3,19 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 
 export default function SamenDetail({ group, onNavigate }) {
-  const { user, isAdmin } = useAuth();
-  const { 
-    getGroupMoments, 
-    getGroupMembers, 
-    getMyResponse, 
-    getMomentResponses, 
-    setResponse 
+  const { user } = useAuth();
+  const {
+    getGroupMoments,
+    getGroupMembers,
+    getMyResponse,
+    getMomentResponses,
+    setResponse,
+    isGroupAdmin
   } = useApp();
 
   const groupMoments = getGroupMoments(group?.id);
   const groupMembers = getGroupMembers(group?.id);
+  const canManage = isGroupAdmin(group?.id);
 
   const getStatusColor = (status) => {
     if (status === 'aanwezig') return 'bg-green-100 text-green-700 border-green-200';
@@ -185,8 +187,8 @@ export default function SamenDetail({ group, onNavigate }) {
           </button>
         </div>
 
-        {/* Admin link — alleen voor admins */}
-        {isAdmin && (
+        {/* Admin link — alleen voor groepsadmins */}
+        {canManage && (
           <div className="mt-3">
             <button
               onClick={() => onNavigate('admin_dashboard', group)}
