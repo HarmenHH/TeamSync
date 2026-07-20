@@ -8,10 +8,12 @@ import {
   unsubscribeFromPush,
   isSubscribed,
 } from '../../utils/pushNotifications.js';
+import { useTheme } from '../../context/ThemeContext.jsx';
 
 export default function AccountScreen({ onNavigate, onShowPrivacy }) {
-  const { user, profile, logout, changePassword } = useAuth();
+  const { user, profile, logout, changePassword, updateProfile } = useAuth();
   const { showToast } = useApp();
+  const { theme, toggleTheme } = useTheme();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -21,6 +23,9 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSupported, setPushSupported] = useState(true);
   const [pushLoading, setPushLoading] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
 
   const handleChangePassword = async () => {
     setError('');
@@ -58,6 +63,22 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
     logout();
   };
 
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      showToast('Naam mag niet leeg zijn');
+      return;
+    }
+    setProfileSaving(true);
+    const result = await updateProfile({ display_name: editName.trim() });
+    if (result.error) {
+      showToast(result.error);
+    } else {
+      showToast('Profiel bijgewerkt');
+      setEditingProfile(false);
+    }
+    setProfileSaving(false);
+  };
+
   useEffect(() => {
     const supported = isPushSupported();
     setPushSupported(supported);
@@ -90,7 +111,7 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-6 py-4">
         <div className="max-w-lg mx-auto">
@@ -229,6 +250,29 @@ export default function AccountScreen({ onNavigate, onShowPrivacy }) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Dark mode toggle */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-base">{theme === 'dark' ? '🌙' : '☀️'}</span>
+              <div>
+                <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">Donkere modus</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Pas weergave aan</p>
+              </div>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className={`relative w-12 h-7 rounded-full transition ${
+                theme === 'dark' ? 'bg-sky-600' : 'bg-slate-200'
+              }`}
+            >
+              <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
+                theme === 'dark' ? 'translate-x-5' : ''
+              }`} />
+            </button>
+          </div>
         </div>
 
         {/* Push notificaties */}

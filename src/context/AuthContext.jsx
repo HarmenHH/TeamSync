@@ -136,6 +136,22 @@ export function AuthProvider({ children }) {
     return authData.user;
   }
 
+  async function updateProfile(updates) {
+    if (!user) return { error: 'Niet ingelogd' };
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (error) return { error: error.message };
+
+    setProfile(data);
+    return { error: null };
+  }
+
   const value = {
     user,
     profile,
@@ -144,6 +160,7 @@ export function AuthProvider({ children }) {
     logout,
     register,
     createUser,
+    updateProfile,
     isAdmin: profile?.role === 'admin',
   };
 

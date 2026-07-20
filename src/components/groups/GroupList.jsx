@@ -42,7 +42,7 @@ export default function GroupList({ onNavigate, onShowPrivacy }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-6 py-4">
         <div className="flex items-center justify-between max-w-lg mx-auto">

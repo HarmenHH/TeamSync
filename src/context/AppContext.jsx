@@ -114,6 +114,18 @@ export function AppProvider({ children }) {
       declineLabel: data.decline_label,
     };
     setGroups(prev => [...prev, mapped]);
+
+    // Voeg creator toe als lid (admin rol) zodat de groep zichtbaar is
+    const { data: memberData, error: memberError } = await supabase
+      .from('group_members')
+      .insert({ group_id: data.id, user_id: user.id, role: 'admin' })
+      .select('*, profiles(id, username, display_name, role)')
+      .single();
+
+    if (!memberError && memberData) {
+      setMembers(prev => [...prev, memberData]);
+    }
+
     return mapped;
   }
 
